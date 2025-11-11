@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RayTrace Labs - Marine Navigation & VDR System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0a1628 0%, #1a3a52 100%);
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .tab-container {
+            background: #1a2f45;
+            border-bottom: 3px solid #00d4ff;
+            padding: 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            gap: 0;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 15px 20px;
+            background: #1a2f45;
+            color: #00d4ff;
+            border: none;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .tab-btn:hover {
+            background: #253a52;
+            border-bottom-color: #00ff88;
+        }
+
+        .tab-btn.active {
+            background: #00d4ff;
+            color: #0a1628;
+            border-bottom-color: #00ff88;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .dashboard-container {
+            max-width: 1600px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+        }
+
+        .left-section {
+            display: grid;
+            grid-template-rows: auto auto auto;
+            gap: 20px;
+        }
+
+        .panel {
+            background: rgba(0, 30, 60, 0.8);
+            border: 2px solid #00d4ff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.1);
+        }
+
+        .panel-header {
+            color: #00ff88;
+            font-size: 13px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .telemetry-item {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+
+        .telemetry-label {
+            font-size: 11px;
+            color: #00d4ff;
+            text-transform: uppercase;
+        }
+
+        .telemetry-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .video-section {
+            background: rgba(0, 30, 60, 0.8);
+            border: 2px solid #00d4ff;
+            border-radius: 10px;
+            padding: 20px;
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .video-title {
+            color: #00ff88;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .stream-container {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #000;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stream-container img, .stream-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            margin: 5px;
+            background: #00d4ff;
+            color: #0a1628;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 10px;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background: #00ff88;
+            transform: translateY(-2px);
+        }
+
+        .btn.full-width {
+            width: 100%;
+            display: block;
+        }
+
+        .camera-input-group {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid #00d4ff;
+            border-radius: 5px;
+        }
+
+        .camera-input-group label {
+            color: #00d4ff;
+            font-size: 10px;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .camera-input-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #00d4ff;
+            border-radius: 3px;
+            font-size: 11px;
+            background: rgba(0, 30, 60, 0.8);
+            color: #00ff88;
+            margin-bottom: 8px;
+            font-family: monospace;
+        }
+
+        .camera-input-group button {
+            width: 100%;
+            padding: 8px;
+            background: #00d4ff;
+            color: #0a1628;
+            border: none;
+            border-radius: 3px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .camera-status {
+            font-size: 9px;
+            color: #00d4ff;
+            margin-top: 8px;
+            padding: 8px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 3px;
+        }
+
+        .camera-status-live {
+            color: #00ff88;
+        }
+
+        .camera-status-error {
+            color: #ff4444;
+        }
+
+        /* VDR TAB */
+        .vdr-container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 5px;
+        }
+
+        .vdr-header {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            padding: 15px;
+            background: #e8e8e8;
+            border-bottom: 2px solid #999;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+
+        .vdr-logo {
+            font-size: 18px;
+            font-weight: bold;
+            color: #00a651;
+        }
+
+        .vdr-title {
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .vdr-subtitle {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .colour-guide {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            margin-bottom: 15px;
+            background: #ccc;
+        }
+
+        .colour-item {
+            padding: 12px 8px;
+            font-size: 10px;
+            text-align: center;
+            background: white;
+            color: #333;
+        }
+
+        .colour-item.readonly { background: #e8e8e8; }
+        .colour-item.manual { background: #e8f4f8; }
+
+        .vdr-section {
+            margin: 15px 0;
+            border: 1px solid #999;
+            background: white;
+        }
+
+        .vdr-section-header {
+            background: #4a7c8c;
+            color: white;
+            padding: 8px 12px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .vdr-info-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+        .vdr-info-table td {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+        }
+
+        .vdr-info-label {
+            background: #789aa3;
+            color: white;
+            font-weight: bold;
+            width: 150px;
+        }
+
+        .vdr-info-value {
+            background: #e8f4f8;
+        }
+
+        .vdr-info-value input {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid #999;
+            font-size: 10px;
+        }
+
+        .vdr-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9px;
+        }
+
+        .vdr-table th {
+            background: #4a7c8c;
+            color: white;
+            padding: 4px 2px;
+            text-align: left;
+            font-weight: bold;
+            border: 1px solid #333;
+        }
+
+        .vdr-table td {
+            padding: 4px 2px;
+            border: 1px solid #ccc;
+            background: white;
+        }
+
+        .vdr-table input {
+            width: 100%;
+            border: none;
+            padding: 4px;
+            background: #e8f4f8;
+        }
+
+        .vdr-table tr:nth-child(even) td { background: #f5f5f5; }
+
+        .vdr-buttons {
+            padding: 15px;
+            text-align: center;
+            background: #f9f9f9;
+            border-top: 1px solid #ccc;
+            margin-top: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .vdr-btn {
+            padding: 10px 15px;
+            font-size: 11px;
+            font-weight: bold;
+            border: 1px solid #999;
+            background: #e8e8e8;
+            cursor: pointer;
+            border-radius: 3px;
+            color: #333;
+            transition: all 0.3s;
+        }
+
+        .vdr-btn:hover {
+            background: #d0d0d0;
+        }
+
+        .vdr-btn.primary {
+            background: #00a651;
+            color: white;
+            border-color: #008040;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+        }
+
+        .column {
+            border-right: 1px solid #999;
+        }
+
+        .column:last-child { border-right: none; }
+
+        .column-header {
+            background: #4a7c8c;
+            color: white;
+            padding: 8px 12px;
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="tab-container">
+        <button class="tab-btn active" onclick="switchTab(event, 'dashboard')">🎯 Dashboard</button>
+        <button class="tab-btn" onclick="switchTab(event, 'vdr')">📋 VDR Form</button>
+    </div>
+
+    <!-- DASHBOARD TAB -->
+    <div id="dashboard" class="tab-content active">
+        <div class="dashboard-container">
+            <div class="main-grid">
+                <!-- LEFT SECTION -->
+                <div class="left-section">
+                    <div class="panel">
+                        <div class="panel-header">📊 Vessel Attitude</div>
+                        <div class="telemetry-item">
+                            <div><div class="telemetry-label">Heading</div><div class="telemetry-value" id="headingValue">245.6°</div></div>
+                            <div><div class="telemetry-label">Speed</div><div class="telemetry-value">12.4 kts</div></div>
+                        </div>
+                        <div class="telemetry-item">
+                            <div><div class="telemetry-label">Pitch</div><div class="telemetry-value" id="pitchValue">2.3°</div></div>
+                            <div><div class="telemetry-label">Roll</div><div class="telemetry-value" id="rollValue">-1.8°</div></div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">⚙️ Engine Status</div>
+                        <div class="telemetry-item">
+                            <div><div class="telemetry-label">Main Engine 1</div><div class="telemetry-value">Active ✓</div></div>
+                            <div><div class="telemetry-label">RPM</div><div class="telemetry-value">450</div></div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">🎮 VDR Controls</div>
+                        <button class="btn full-width" onclick="captureScreenshot()">📷 Screenshot</button>
+                        <button class="btn full-width" onclick="exportVDRCSV()">📊 CSV (Page 1)</button>
+                        <button class="btn full-width" onclick="exportVDRExcel()">📈 Excel (Page 2)</button>
+                    </div>
+                </div>
+
+                <!-- RIGHT SECTION - VIDEO -->
+                <div class="video-section">
+                    <div class="video-title">🎥 Marine Navigation Live Feed</div>
+                    
+                    <div class="camera-input-group">
+                        <label>📷 Camera URL / IP Address:</label>
+                        <input type="text" id="cameraUrl" placeholder="Example: 192.168.0.108:8080 or http://192.168.0.108:8080/stream" value="">
+                        <button onclick="loadCameraStream()">🔌 CONNECT NOW</button>
+                        <div class="camera-status" id="cameraStatus">🔴 Not connected</div>
+                    </div>
+
+                    <div class="stream-container" id="videoContainer">
+                        <img id="cameraStream" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1280' height='720'%3E%3Crect fill='%23000' width='1280' height='720'/%3E%3Ctext x='50%25' y='50%25' fill='%2300d4ff' font-size='48' text-anchor='middle' dominant-baseline='middle' font-family='Arial'%3E📷 Enter Camera IP and Click CONNECT NOW%3C/text%3E%3C/svg%3E" alt="Camera Stream" style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+
+                    <div style="margin-top: 10px; font-size: 9px; color: #00d4ff; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px;">
+                        <p><strong>✓ Format Examples:</strong></p>
+                        <p>• <strong>192.168.0.108:8080</strong> (Just IP:Port)</p>
+                        <p>• http://192.168.0.108:8080/stream</p>
+                        <p>• http://192.168.0.108:8080/snapshot.jpg</p>
+                        <p style="margin-top: 8px;"><strong>Status:</strong> <span id="streamStatus">🟡 Ready</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VDR FORM TAB -->
+    <div id="vdr" class="tab-content">
+        <div class="vdr-container">
+            <form id="vdrForm" onsubmit="submitVDRToGDS(event)">
+                <div class="vdr-header">
+                    <div class="vdr-logo">GDS</div>
+                    <div>
+                        <div class="vdr-title">STANDARD VESSEL DAILY REPORT</div>
+                        <div class="vdr-subtitle">RayTrace Labs - Marine Navigation & VDR System</div>
+                    </div>
+                </div>
+
+                <div class="colour-guide">
+                    <div class="colour-item readonly">Read only</div>
+                    <div class="colour-item manual">Manual entry</div>
+                </div>
+
+                <!-- VESSEL INFORMATION -->
+                <div class="vdr-section">
+                    <div class="vdr-section-header">VESSEL INFORMATION</div>
+                    <table class="vdr-info-table">
+                        <tr>
+                            <td class="vdr-info-label">Vessel Name *</td>
+                            <td class="vdr-info-value" style="width: 100%;"><input type="text" name="vesselName" placeholder="Enter vessel name" required></td>
+                        </tr>
+                        <tr>
+                            <td class="vdr-info-label">Report No. *</td>
+                            <td class="vdr-info-value"><input type="text" name="reportNo" placeholder="Auto-generated or enter" required></td>
+                        </tr>
+                        <tr>
+                            <td class="vdr-info-label">Date of Hire *</td>
+                            <td class="vdr-info-value"><input type="date" name="dateOfHire" required></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- GENERAL INFORMATION -->
+                <div class="vdr-section">
+                    <div class="vdr-section-header">GENERAL INFORMATION</div>
+                    <table class="vdr-info-table">
+                        <tr>
+                            <td class="vdr-info-label">Report Date *</td>
+                            <td class="vdr-info-value"><input type="date" name="reportDate" required></td>
+                        </tr>
+                        <tr>
+                            <td class="vdr-info-label">Location @ 0000H *</td>
+                            <td class="vdr-info-value"><input type="text" name="location" placeholder="Enter location" required></td>
+                        </tr>
+                        <tr>
+                            <td class="vdr-info-label">Captain on Duty *</td>
+                            <td class="vdr-info-value"><input type="text" name="captainName" placeholder="Enter captain name" required></td>
+                        </tr>
+                        <tr>
+                            <td class="vdr-info-label">Draft (FWD / AFT) *</td>
+                            <td class="vdr-info-value">
+                                <div style="display: grid; grid-template-columns: 1fr 40px 1fr 40px; gap: 5px;">
+                                    <input type="number" name="draftFWD" step="0.1" placeholder="FWD" required>
+                                    <span>FWD</span>
+                                    <input type="number" name="draftAFT" step="0.1" placeholder="AFT" required>
+                                    <span>AFT</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- HSE & ENDURANCE -->
+                <div class="vdr-section">
+                    <div class="two-column">
+                        <div class="column">
+                            <div class="column-header">HSE PERFORMANCE</div>
+                            <table class="vdr-table" style="border: none;">
+                                <tr>
+                                    <td style="background: #789aa3; color: white; font-weight: bold; border: none;">HSE Perfect Days</td>
+                                    <td style="background: #e8f4f8; border: none;"><input type="text" name="hsePerfectDays" style="width: 100%; border: none;"></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="column">
+                            <div class="column-header">ENDURANCE STATUS</div>
+                            <table class="vdr-table" style="border: none;">
+                                <tr>
+                                    <th style="border: none;">ITEMS</th>
+                                    <th style="border: none;">DAYS</th>
+                                </tr>
+                                <tr>
+                                    <td style="border: none;">Fuel</td>
+                                    <td style="border: none;"><input type="text" name="enduranceFuel" style="width: 100%; border: none;"></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- WEATHER CONDITION -->
+                <div class="vdr-section">
+                    <div class="vdr-section-header">WEATHER CONDITION</div>
+                    <table class="vdr-table">
+                        <tr>
+                            <th>TIME</th><th>WIND (Kn)</th><th>SWELL (m)</th><th>SEA</th><th>SKY</th><th>VIS (nm)</th><th>TEMP (°C)</th>
+                        </tr>
+                        <tr>
+                            <td>0000H</td>
+                            <td><input type="text" name="wind0000"></td>
+                            <td><input type="text" name="swell0000"></td>
+                            <td><input type="text" name="sea0000"></td>
+                            <td><input type="text" name="sky0000"></td>
+                            <td><input type="text" name="vis0000"></td>
+                            <td><input type="number" name="temp0000" step="0.1"></td>
+                        </tr>
+                        <tr>
+                            <td>0600H</td>
+                            <td><input type="text" name="wind0600"></td>
+                            <td><input type="text" name="swell0600"></td>
+                            <td><input type="text" name="sea0600"></td>
+                            <td><input type="text" name="sky0600"></td>
+                            <td><input type="text" name="vis0600"></td>
+                            <td><input type="number" name="temp0600" step="0.1"></td>
+                        </tr>
+                        <tr>
+                            <td>1200H</td>
+                            <td><input type="text" name="wind1200"></td>
+                            <td><input type="text" name="swell1200"></td>
+                            <td><input type="text" name="sea1200"></td>
+                            <td><input type="text" name="sky1200"></td>
+                            <td><input type="text" name="vis1200"></td>
+                            <td><input type="number" name="temp1200" step="0.1"></td>
+                        </tr>
+                        <tr>
+                            <td>1800H</td>
+                            <td><input type="text" name="wind1800"></td>
+                            <td><input type="text" name="swell1800"></td>
+                            <td><input type="text" name="sea1800"></td>
+                            <td><input type="text" name="sky1800"></td>
+                            <td><input type="text" name="vis1800"></td>
+                            <td><input type="number" name="temp1800" step="0.1"></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- ENGINE RUNNING HOURS -->
+                <div class="vdr-section">
+                    <div class="vdr-section-header">ENGINE RUNNING HOURS AND CONSUMPTION</div>
+                    <table class="vdr-table">
+                        <tr>
+                            <th>ENGINE</th><th>TOTAL RUN</th><th>DAILY RUN</th><th>INLET @0000</th><th>INLET @2400</th><th>OUTLET @0000</th><th>OUTLET @2400</th><th>TOTAL</th><th>DIFF</th><th>CONSUMP</th>
+                        </tr>
+                        <tr>
+                            <td>Main Engine 1</td>
+                            <td><input type="number" name="me1TotalRun" step="0.1"></td>
+                            <td><input type="number" name="me1DailyRun" step="0.1"></td>
+                            <td><input type="number" name="me1Inlet0000" step="0.1"></td>
+                            <td><input type="number" name="me1Inlet2400" step="0.1"></td>
+                            <td><input type="number" name="me1Outlet0000" step="0.1"></td>
+                            <td><input type="number" name="me1Outlet2400" step="0.1"></td>
+                            <td><input type="number" name="me1Total" step="0.1"></td>
+                            <td><input type="number" name="me1Diff" step="0.1"></td>
+                            <td><input type="number" name="me1Consump" step="0.1"></td>
+                        </tr>
+                        <tr>
+                            <td>Main Engine 2</td>
+                            <td><input type="number" name="me2TotalRun" step="0.1"></td>
+                            <td><input type="number" name="me2DailyRun" step="0.1"></td>
+                            <td><input type="number" name="me2Inlet0000" step="0.1"></td>
+                            <td><input type="number" name="me2Inlet2400" step="0.1"></td>
+                            <td><input type="number" name="me2Outlet0000" step="0.1"></td>
+                            <td><input type="number" name="me2Outlet2400" step="0.1"></td>
+                            <td><input type="number" name="me2Total" step="0.1"></td>
+                            <td><input type="number" name="me2Diff" step="0.1"></td>
+                            <td><input type="number" name="me2Consump" step="0.1"></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- BULK INVENTORY -->
+                <div class="vdr-section">
+                    <div class="vdr-section-header">BULK INVENTORY</div>
+                    <table class="vdr-table">
+                        <tr>
+                            <th>ROB</th><th>OPENING @0000H</th><th>RECEIVED FROM</th><th>QTY</th><th>METER BEFORE</th><th>TICKET NO.</th><th>CONSUMED</th><th>CLOSING @2400H</th><th>REMARKS</th>
+                        </tr>
+                        <tr>
+                            <td>Fuel (ltrs)</td>
+                            <td><input type="number" name="fuelOpening" step="0.01"></td>
+                            <td>Received</td>
+                            <td><input type="number" name="fuelReceivedQty" step="0.01"></td>
+                            <td><input type="number" name="fuelMeterBefore" step="0.01"></td>
+                            <td><input type="text" name="fuelTicketNo"></td>
+                            <td><input type="number" name="fuelConsumed" step="0.01"></td>
+                            <td><input type="number" name="fuelClosing" step="0.01"></td>
+                            <td><input type="text" name="fuelRemarks"></td>
+                        </tr>
+                        <tr>
+                            <td>Fresh Water (ltrs)</td>
+                            <td><input type="number" name="waterOpening" step="0.01"></td>
+                            <td>Received</td>
+                            <td><input type="number" name="waterReceivedQty" step="0.01"></td>
+                            <td><input type="number" name="waterMeterBefore" step="0.01"></td>
+                            <td><input type="text" name="waterTicketNo"></td>
+                            <td><input type="number" name="waterConsumed" step="0.01"></td>
+                            <td><input type="number" name="waterClosing" step="0.01"></td>
+                            <td><input type="text" name="waterRemarks"></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- BUTTONS -->
+                <div class="vdr-buttons">
+                    <button type="button" class="vdr-btn" onclick="saveVDRLocal()">💾 Save</button>
+                    <button type="button" class="vdr-btn" onclick="exportVDRCSV()">📊 CSV</button>
+                    <button type="button" class="vdr-btn" onclick="exportVDRExcel()">📈 Excel</button>
+                    <button type="button" class="vdr-btn" onclick="exportVDRPDF()">📄 PDF</button>
+                    <button type="button" class="vdr-btn" onclick="resetVDRForm()">🔄 Reset</button>
+                    <button type="submit" class="vdr-btn primary">📤 SUBMIT</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let cameraRefreshInterval = null;
+        let streamLoadAttempts = 0;
+
+        // Tab Switching
+        function switchTab(event, tabName) {
+            event.preventDefault();
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Fix and validate camera URL
+        function validateAndFixCameraUrl(url) {
+            url = url.trim();
+            
+            // Fix common mistakes
+            url = url.replace(/192\.168\.0\.(\d+)\.(\d+)/, '192.168.0.$1:$2'); // Fix dot instead of colon
+            url = url.replace(/192\.168\.(\d+)\.(\d+)\.(\d+)/, '192.168.$1.$2:$3'); // Fix multiple dots
+            
+            // Add http:// if missing
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = 'http://' + url;
+            }
+            
+            // Ensure port is specified
+            if (url.match(/http:\/\/\d+\.\d+\.\d+\.\d+$/) && !url.includes(':')) {
+                url += ':8080'; // Default port
+            }
+            
+            return url;
+        }
+
+        // Load Camera Stream
+        function loadCameraStream() {
+            let url = document.getElementById('cameraUrl').value.trim();
+            const statusSpan = document.getElementById('cameraStatus');
+            const streamStatus = document.getElementById('streamStatus');
+            const cameraImg = document.getElementById('cameraStream');
+
+            if (!url) {
+                alert('⚠️ Please enter camera IP or URL');
+                return;
+            }
+
+            // Validate and fix URL
+            url = validateAndFixCameraUrl(url);
+            document.getElementById('cameraUrl').value = url;
+
+            statusSpan.textContent = '🟡 Connecting to: ' + url;
+            streamStatus.textContent = '🟡 Connecting...';
+            streamLoadAttempts = 0;
+
+            // Clear existing interval
+            if (cameraRefreshInterval) clearInterval(cameraRefreshInterval);
+
+            // Add timestamp for cache busting
+            const finalUrl = url.includes('?') ? url + '&t=' + Date.now() : url + '?t=' + Date.now();
+
+            cameraImg.crossOrigin = 'anonymous';
+
+            // Error handler
+            cameraImg.onerror = function() {
+                streamLoadAttempts++;
+                
+                if (streamLoadAttempts < 3) {
+                    // Retry
+                    setTimeout(() => {
+                        cameraImg.src = url.includes('?') ? url + '&t=' + Date.now() : url + '?t=' + Date.now();
+                    }, 1000);
+                } else {
+                    statusSpan.innerHTML = '🔴 <strong>Failed!</strong> Possible issues:<br/>1. Wrong IP/Port<br/>2. Camera offline<br/>3. Network unreachable';
+                    statusSpan.classList.add('camera-status-error');
+                    streamStatus.textContent = '🔴 Failed to connect';
+                    console.error('Camera connection failed for URL:', url);
+                    alert('❌ Cannot connect to camera at ' + url + '\n\nCheck:\n✓ IP address is correct\n✓ Port number is correct (e.g., :8080)\n✓ Camera is powered on\n✓ Network is reachable');
+                }
+            };
+
+            // Success handler
+            cameraImg.onload = function() {
+                statusSpan.innerHTML = '🟢 <strong>Connected!</strong>';
+                statusSpan.classList.remove('camera-status-error');
+                statusSpan.classList.add('camera-status-live');
+                streamStatus.textContent = '🟢 Live Stream Active';
+                alert('✅ Camera connected successfully!');
+
+                // Auto-refresh every 2 seconds
+                if (cameraRefreshInterval) clearInterval(cameraRefreshInterval);
+                cameraRefreshInterval = setInterval(() => {
+                    cameraImg.src = url.includes('?') ? url + '&t=' + Date.now() : url + '?t=' + Date.now();
+                }, 2000);
+            };
+
+            // Start loading
+            cameraImg.src = finalUrl;
+        }
+
+        // Allow Enter key to connect
+        document.addEventListener('DOMContentLoaded', function() {
+            const cameraInput = document.getElementById('cameraUrl');
+            if (cameraInput) {
+                cameraInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') loadCameraStream();
+                });
+            }
+        });
+
+        // Screenshot
+        function captureScreenshot() {
+            html2canvas(document.getElementById('videoContainer')).then(canvas => {
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL();
+                link.download = `screenshot_${Date.now()}.png`;
+                link.click();
+                alert('✅ Screenshot saved!');
+            }).catch(err => alert('⚠️ Screenshot failed'));
+        }
+
+        // Export CSV
+        function exportVDRCSV() {
+            const formData = new FormData(document.getElementById('vdrForm'));
+            const data = Object.fromEntries(formData);
+            
+            let csv = 'STANDARD VESSEL DAILY REPORT - PAGE 1\n\n';
+            csv += 'VESSEL INFORMATION\n';
+            csv += 'Vessel Name,' + (data.vesselName || 'N/A') + '\n';
+            csv += 'Report No.,' + (data.reportNo || 'N/A') + '\n';
+            csv += 'Date of Hire,' + (data.dateOfHire || 'N/A') + '\n\n';
+            csv += 'GENERAL INFORMATION\n';
+            csv += 'Report Date,' + (data.reportDate || 'N/A') + '\n';
+            csv += 'Location,' + (data.location || 'N/A') + '\n';
+            csv += 'Captain,' + (data.captainName || 'N/A') + '\n\n';
+            csv += 'WEATHER CONDITION\nTIME,WIND,SWELL,SEA,SKY,VIS,TEMP\n';
+            csv += '0000H,' + (data.wind0000 || '') + ',' + (data.swell0000 || '') + ',' + (data.sea0000 || '') + ',' + (data.sky0000 || '') + ',' + (data.vis0000 || '') + ',' + (data.temp0000 || '') + '\n';
+            csv += '0600H,' + (data.wind0600 || '') + ',' + (data.swell0600 || '') + ',' + (data.sea0600 || '') + ',' + (data.sky0600 || '') + ',' + (data.vis0600 || '') + ',' + (data.temp0600 || '') + '\n';
+            csv += '1200H,' + (data.wind1200 || '') + ',' + (data.swell1200 || '') + ',' + (data.sea1200 || '') + ',' + (data.sky1200 || '') + ',' + (data.vis1200 || '') + ',' + (data.temp1200 || '') + '\n';
+            csv += '1800H,' + (data.wind1800 || '') + ',' + (data.swell1800 || '') + ',' + (data.sea1800 || '') + ',' + (data.sky1800 || '') + ',' + (data.vis1800 || '') + ',' + (data.temp1800 || '') + '\n';
+            
+            const link = document.createElement('a');
+            link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+            link.download = `VDR_Page1_${Date.now()}.csv`;
+            link.click();
+            alert('✅ CSV exported!');
+        }
+
+        // Export Excel
+        function exportVDRExcel() {
+            if (!window.XLSX) {
+                alert('Excel library loading...');
+                return;
+            }
+
+            const formData = new FormData(document.getElementById('vdrForm'));
+            const data = Object.fromEntries(formData);
+            const wb = XLSX.utils.book_new();
+
+            const engineData = [
+                ['ENGINE RUNNING HOURS'],
+                [],
+                ['ENGINE', 'TOTAL RUN', 'DAILY RUN', 'INLET@0000', 'INLET@2400', 'OUTLET@0000', 'OUTLET@2400', 'TOTAL', 'DIFF', 'CONSUMPTION'],
+                ['Main Engine 1', data.me1TotalRun || '', data.me1DailyRun || '', data.me1Inlet0000 || '', data.me1Inlet2400 || '', data.me1Outlet0000 || '', data.me1Outlet2400 || '', data.me1Total || '', data.me1Diff || '', data.me1Consump || ''],
+                ['Main Engine 2', data.me2TotalRun || '', data.me2DailyRun || '', data.me2Inlet0000 || '', data.me2Inlet2400 || '', data.me2Outlet0000 || '', data.me2Outlet2400 || '', data.me2Total || '', data.me2Diff || '', data.me2Consump || ''],
+            ];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(engineData), 'Engine');
+
+            const bulkData = [
+                ['BULK INVENTORY'],
+                [],
+                ['ROB', 'OPENING', 'RECEIVED', 'QTY', 'METER', 'TICKET', 'CONSUMED', 'CLOSING', 'REMARKS'],
+                ['Fuel', data.fuelOpening || '', 'Received', data.fuelReceivedQty || '', data.fuelMeterBefore || '', data.fuelTicketNo || '', data.fuelConsumed || '', data.fuelClosing || '', data.fuelRemarks || ''],
+                ['Fresh Water', data.waterOpening || '', 'Received', data.waterReceivedQty || '', data.waterMeterBefore || '', data.waterTicketNo || '', data.waterConsumed || '', data.waterClosing || '', data.waterRemarks || ''],
+            ];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(bulkData), 'Inventory');
+
+            XLSX.writeFile(wb, `VDR_Page2_${Date.now()}.xlsx`);
+            alert('✅ Excel exported!');
+        }
+
+        // Export PDF
+        function exportVDRPDF() {
+            const sections = document.querySelectorAll('.vdr-section');
+            sections.forEach((s, i) => { if (i > 3) s.style.display = 'none'; });
+            setTimeout(() => {
+                window.print();
+                sections.forEach((s, i) => { if (i > 3) s.style.display = 'block'; });
+            }, 100);
+        }
+
+        // Save Locally
+        function saveVDRLocal() {
+            const data = new FormData(document.getElementById('vdrForm'));
+            localStorage.setItem('vdrData_' + Date.now(), JSON.stringify(Object.fromEntries(data)));
+            alert('✅ Saved locally!');
+        }
+
+        // Submit
+        function submitVDRToGDS(event) {
+            event.preventDefault();
+            if (!document.querySelector('input[name="vesselName"]').value) {
+                alert('Fill required fields');
+                return;
+            }
+            alert('✅ VDR Submitted! Ref: VDR-' + Date.now());
+            if (confirm('Reset form?')) document.getElementById('vdrForm').reset();
+        }
+
+        // Reset
+        function resetVDRForm() {
+            if (confirm('Reset all fields?')) {
+                document.getElementById('vdrForm').reset();
+                alert('✅ Form reset');
+            }
+        }
+
+        // Update Attitude
+        function updateAttitude() {
+            document.getElementById('headingValue').textContent = (Math.random() * 360).toFixed(1) + '°';
+            document.getElementById('pitchValue').textContent = (Math.random() * 4 - 2).toFixed(1) + '°';
+            document.getElementById('rollValue').textContent = (Math.random() * 4 - 2).toFixed(1) + '°';
+        }
+
+        updateAttitude();
+        setInterval(updateAttitude, 1000);
+    </script>
+</body>
+</html>
